@@ -29,10 +29,14 @@ class TestSearch:
         assert "Clean Code" in r0.title
         assert r0.md5 == "D41D8CD98F00B204E9800998ECF8427E"
         assert r0.source == "annas"
+        assert r0.extension == "pdf"
+        assert r0.year == "2008"
+        assert r0.size_bytes > 0
 
         r1 = results[1]
         assert "Pragmatic" in r1.title
         assert r1.md5 == "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        assert r1.extension == "epub"
 
     def test_returns_empty_on_network_error(self, source):
         with patch.object(source.client, "get", side_effect=httpx.ConnectError("fail")):
@@ -41,7 +45,8 @@ class TestSearch:
 
 
 class TestResolveDownload:
-    def test_resolves_via_detail_and_mirror(self, source):
+    def test_resolves_via_libgen_link(self, source):
+        """Detail page has libgen.is link → follow to mirror → GET link."""
         detail_resp = MagicMock()
         detail_resp.text = ANNAS_DETAIL_HTML
         detail_resp.status_code = 200
@@ -65,18 +70,35 @@ class TestResolveDownload:
         assert url is not None
         assert "download.library.lol" in url
 
-    def test_returns_none_when_no_external_links(self, source):
+    def test_skips_fast_slow_download_links(self, source):
+        """Should not try relative /fast_download or /slow_download URLs."""
+        detail_html = """<html><body>
+        <div id="md5-panel-downloads">
+          <a class="js-download-link" href="/fast_download/abc/0/0">Fast</a>
+          <a href="/slow_download/abc/0/0">Slow</a>
+        </div>
+        </body></html>"""
+
         detail_resp = MagicMock()
-        detail_resp.text = "<html><body><div id='md5-panel-downloads'></div></body></html>"
+        detail_resp.text = detail_html
         detail_resp.status_code = 200
         detail_resp.raise_for_status = MagicMock()
 
+        # The fallback (strategy 4) will try constructing a libgen URL
+        fallback_resp = MagicMock()
+        fallback_resp.text = "<html><body>no GET link</body></html>"
+        fallback_resp.status_code = 200
+        fallback_resp.raise_for_status = MagicMock()
+
         from gtb.models import BookResult
         book = BookResult(
-            title="X", author="A", md5="AAAA", extension="pdf",
-            size_bytes=100, language="en", year="2020", source="annas",
+            title="X", author="A", md5="AABBCCDDAABBCCDDAABBCCDDAABBCCDD",
+            extension="pdf", size_bytes=100, language="en", year="2020",
+            source="annas",
         )
 
-        with patch.object(source.client, "get", return_value=detail_resp):
+        with patch.object(source.client, "get", side_effect=[detail_resp, fallback_resp]):
             url = source.resolve_download_url(book)
+
+        # Should not crash on relative URLs, returns None if no GET found
         assert url is None

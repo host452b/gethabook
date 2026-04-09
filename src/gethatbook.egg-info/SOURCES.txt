@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+src/gethatbook.egg-info/PKG-INFO
+src/gethatbook.egg-info/SOURCES.txt
+src/gethatbook.egg-info/dependency_links.txt
+src/gethatbook.egg-info/entry_points.txt
+src/gethatbook.egg-info/requires.txt
+src/gethatbook.egg-info/top_level.txt
+src/gtb/__init__.py
+src/gtb/sources/__init__.py

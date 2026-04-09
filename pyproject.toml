@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gethatbook"
+version = "0.1.0"
+description = "Aggregate ebook search across LibGen and Anna's Archive"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "click>=8.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-httpx>=0.30",
+    "respx>=0.21",
+]
+
+[project.scripts]
+gtb = "gtb.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

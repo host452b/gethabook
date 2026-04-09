@@ -1,0 +1,2 @@
+[console_scripts]
+gtb = gtb.cli:main

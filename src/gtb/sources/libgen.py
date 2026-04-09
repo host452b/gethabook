@@ -7,39 +7,24 @@ import httpx
 from bs4 import BeautifulSoup
 
 from ..models import BookResult
-from .base import Source, USER_AGENT
+from .base import Source, parse_size
 
 MIRRORS = ["libgen.is", "libgen.st", "libgen.rs"]
-
-
-def _parse_size(size_str: str) -> int:
-    """Parse '5 Mb' -> bytes."""
-    m = re.match(r"([\d.]+)\s*(kb|mb|gb|bytes?|b)", size_str.strip(), re.IGNORECASE)
-    if not m:
-        return 0
-    val = float(m.group(1))
-    unit = m.group(2).lower()
-    mult = {"b": 1, "byte": 1, "bytes": 1, "kb": 1024, "mb": 1024**2, "gb": 1024**3}
-    return int(val * mult.get(unit, 1))
 
 
 class LibGenSource(Source):
     name = "libgen"
 
     def __init__(self) -> None:
-        self.client = httpx.Client(
-            headers={"User-Agent": USER_AGENT},
-            follow_redirects=True,
-            timeout=30,
-        )
+        super().__init__()
         self.base_url: str | None = None
 
     def _find_mirror(self) -> str | None:
         for mirror in MIRRORS:
             try:
                 url = f"https://{mirror}"
-                r = self.client.get(url, timeout=10)
-                if r.status_code == 200:
+                resp = self.client.get(url, timeout=10)
+                if resp.status_code == 200:
                     self.base_url = url
                     return url
             except httpx.RequestError:
@@ -60,8 +45,7 @@ class LibGenSource(Source):
             "column": "def",
         }
         try:
-            resp = self.client.get(f"{self.base_url}/search.php", params=params)
-            resp.raise_for_status()
+            resp = self._get(f"{self.base_url}/search.php", params=params)
         except (httpx.RequestError, httpx.HTTPStatusError):
             return []
 
@@ -107,7 +91,7 @@ class LibGenSource(Source):
                 author=cols[1].get_text(strip=True),
                 md5=md5,
                 extension=cols[8].get_text(strip=True).lower(),
-                size_bytes=_parse_size(cols[7].get_text(strip=True)),
+                size_bytes=parse_size(cols[7].get_text(strip=True)),
                 language=cols[6].get_text(strip=True),
                 year=cols[4].get_text(strip=True),
                 publisher=cols[3].get_text(strip=True),
@@ -122,8 +106,7 @@ class LibGenSource(Source):
             return None
 
         try:
-            resp = self.client.get(book.mirror_url)
-            resp.raise_for_status()
+            resp = self._get(book.mirror_url)
         except (httpx.RequestError, httpx.HTTPStatusError):
             return None
 

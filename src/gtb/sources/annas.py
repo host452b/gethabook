@@ -7,21 +7,21 @@ import httpx
 from bs4 import BeautifulSoup
 
 from ..models import BookResult
-from .base import Source, USER_AGENT
+from .base import Source, parse_size
 
 MIRRORS = ["annas-archive.gl", "annas-archive.pk", "annas-archive.gd"]
 
 
 def _parse_meta_line(text: str) -> dict:
     """Parse a line like 'English, 2008, pdf, 5.0MB, 464 pages' into fields."""
-    info = {"language": "", "year": "", "extension": "", "size_bytes": 0, "pages": ""}
+    info: dict = {"language": "", "year": "", "extension": "", "size_bytes": 0, "pages": ""}
     parts = [p.strip() for p in text.split(",")]
     for part in parts:
         part_lower = part.lower()
         if re.match(r"^\d{4}$", part):
             info["year"] = part
         elif re.match(r"^[\d.]+\s*(kb|mb|gb|b)$", part_lower):
-            info["size_bytes"] = _parse_size(part)
+            info["size_bytes"] = parse_size(part)
         elif re.match(r"^\d+\s*pages?$", part_lower):
             info["pages"] = re.search(r"\d+", part).group()
         elif part_lower in ("pdf", "epub", "mobi", "azw3", "djvu", "md", "txt", "fb2", "cbr", "cbz", "doc", "docx", "rtf"):
@@ -31,33 +31,19 @@ def _parse_meta_line(text: str) -> dict:
     return info
 
 
-def _parse_size(s: str) -> int:
-    m = re.match(r"([\d.]+)\s*(kb|mb|gb|b)", s.strip(), re.IGNORECASE)
-    if not m:
-        return 0
-    val = float(m.group(1))
-    unit = m.group(2).lower()
-    mult = {"b": 1, "kb": 1024, "mb": 1024**2, "gb": 1024**3}
-    return int(val * mult.get(unit, 1))
-
-
 class AnnasArchiveSource(Source):
     name = "annas"
 
     def __init__(self) -> None:
-        self.client = httpx.Client(
-            headers={"User-Agent": USER_AGENT},
-            follow_redirects=True,
-            timeout=30,
-        )
+        super().__init__()
         self.base_url: str | None = None
 
     def _find_mirror(self) -> str | None:
         for mirror in MIRRORS:
             try:
                 url = f"https://{mirror}"
-                r = self.client.get(url, timeout=10)
-                if r.status_code == 200:
+                resp = self.client.get(url, timeout=10)
+                if resp.status_code == 200:
                     self.base_url = url
                     return url
             except httpx.RequestError:
@@ -70,8 +56,7 @@ class AnnasArchiveSource(Source):
 
         params = {"q": query}
         try:
-            resp = self.client.get(f"{self.base_url}/search", params=params)
-            resp.raise_for_status()
+            resp = self._get(f"{self.base_url}/search", params=params)
         except (httpx.RequestError, httpx.HTTPStatusError):
             return []
 
@@ -95,7 +80,7 @@ class AnnasArchiveSource(Source):
 
             container = link.find_parent("div", class_="mb-4") or link.parent
             author = ""
-            meta = {}
+            meta: dict = {}
 
             if container:
                 divs = container.find_all("div")
@@ -130,8 +115,7 @@ class AnnasArchiveSource(Source):
 
         detail_url = f"{self.base_url}/md5/{book.md5}"
         try:
-            resp = self.client.get(detail_url)
-            resp.raise_for_status()
+            resp = self._get(detail_url)
         except (httpx.RequestError, httpx.HTTPStatusError):
             return None
 
@@ -149,8 +133,7 @@ class AnnasArchiveSource(Source):
             if not mirror_url:
                 continue
             try:
-                resp2 = self.client.get(mirror_url)
-                resp2.raise_for_status()
+                resp2 = self._get(mirror_url)
             except (httpx.RequestError, httpx.HTTPStatusError):
                 continue
 

@@ -26,7 +26,6 @@ def test_search_and_download(runner):
     book = _fake_book()
 
     with patch("gtb.cli.parallel_search", return_value=[book]) as mock_search, \
-         patch("gtb.cli.select_best", return_value=book), \
          patch("gtb.cli._resolve_and_download", return_value="/tmp/Clean_Code.pdf"):
         result = runner.invoke(main, ["Clean Code"])
 

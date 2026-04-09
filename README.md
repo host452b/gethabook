@@ -1,14 +1,14 @@
 # gethatbook (gtb)
 
-A command-line tool that aggregates ebook search across multiple sources (Anna's Archive, Library Genesis), auto-selects the best result by format quality and title relevance, and downloads it — all in one command.
+A command-line tool that aggregates ebook search across multiple open sources, auto-selects the best result by format quality and title relevance, and downloads it — all in one command.
 
 ## Features
 
-- **Multi-source parallel search** — Searches Anna's Archive and LibGen simultaneously, merges results, deduplicates by MD5
-- **Smart auto-selection** — Ranks results by title relevance → format priority (`pdf(text) > md > epub > mobi > pdf(scanned)`) → file size
+- **Multi-source parallel search** — Searches multiple ebook sources simultaneously, merges results, deduplicates by MD5
+- **Smart auto-selection** — Ranks results by title relevance, format priority (`pdf(text) > md > epub > mobi > pdf(scanned)`), and file size
 - **Scanned PDF detection** — Heuristic detection of scanned/OCR PDFs based on bytes-per-page ratio, automatically deprioritized
 - **Auto-fallback** — If download fails, automatically tries the next-best result until one succeeds
-- **Rate limiting & retry** — Polite 0.5s delay between requests, automatic retry with backoff on failure
+- **Rate limiting & retry** — Polite delay between requests, automatic retry with backoff on failure
 - **Browse mode** — `--list` flag to preview all results without downloading
 - **Format filter** — `--format pdf` to restrict results to a specific format
 - **Progress bar** — Real-time download progress in terminal
@@ -24,9 +24,9 @@ pip install -e .
 ### Dependencies
 
 - Python 3.10+
-- [httpx](https://www.python-httpx.org/) — HTTP client
-- [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/) + [lxml](https://lxml.de/) — HTML parsing
-- [click](https://click.palletsprojects.com/) — CLI framework
+- httpx — HTTP client
+- beautifulsoup4 + lxml — HTML parsing
+- click — CLI framework
 
 All dependencies are installed automatically via `pip install`.
 
@@ -55,13 +55,11 @@ gtb "Design Patterns" --list
 Output:
 ```
 Searching for: Design Patterns
-  [annas] found 50 results
-  [libgen] found 25 results
 
 62 results:
-  1. [pdf] Design Patterns: Elements of Reusable Object-Oriented Software (5.2 MB, libgen)
-  2. [epub] Design Patterns: Elements of Reusable Object-Oriented Software (1.8 MB, annas)
-  3. [pdf] Head First Design Patterns (12.3 MB, annas)
+  1. [pdf] Design Patterns: Elements of Reusable Object-Oriented Software (5.2 MB, source-a)
+  2. [epub] Design Patterns: Elements of Reusable Object-Oriented Software (1.8 MB, source-b)
+  3. [pdf] Head First Design Patterns (12.3 MB, source-b)
   ...
 ```
 
@@ -82,8 +80,7 @@ gtb --version
 ```
 gtb "book title"
        │
-       ├── 1. Parallel search ──┬── Anna's Archive (annas-archive.gl)
-       │                        └── Library Genesis (libgen.is)
+       ├── 1. Parallel search across multiple sources
        │
        ├── 2. Deduplicate by MD5 hash
        │
@@ -92,9 +89,7 @@ gtb "book title"
        │      ② Format priority (text PDF > md > epub > scanned PDF)
        │      ③ File size (smaller preferred within same tier)
        │
-       ├── 4. Resolve download URL:
-       │      Anna's Archive → detail page → libgen mirror → GET link
-       │      LibGen → mirror page (library.lol) → GET link
+       ├── 4. Resolve download URL via mirror pages
        │
        └── 5. Download (auto-fallback on failure → try next result)
 ```
@@ -114,15 +109,15 @@ gtb "book title"
 
 ```
 src/gtb/
-├── cli.py              # Click CLI entry point
+├── cli.py              # CLI entry point
 ├── models.py           # BookResult dataclass, FormatType enum
 ├── ranking.py          # Title relevance + format scoring
-├── search.py           # Parallel search orchestrator (ThreadPoolExecutor)
+├── search.py           # Parallel search orchestrator
 ├── download.py         # Stream download with progress
 └── sources/
     ├── base.py         # Source ABC, shared HTTP client with retry/rate-limit
-    ├── libgen.py       # LibGen search + mirror page resolution
-    └── annas.py        # Anna's Archive search + two-hop download resolution
+    ├── libgen.py       # Source A: search + mirror page resolution
+    └── annas.py        # Source B: search + two-hop download resolution
 ```
 
 ## Testing
@@ -133,13 +128,6 @@ pytest tests/ -v
 ```
 
 48 tests covering models, ranking, search orchestrator, download manager, CLI, and both source backends (all with mocked HTTP — no network required).
-
-## Limitations
-
-- **Anna's Archive anti-bot protection** — Cloudflare/DDoS-Guard may block requests in some environments. The tool uses a realistic User-Agent and rate limiting to mitigate this.
-- **LibGen mirror availability** — Mirror domains change frequently. If downloads fail, it's likely a network/DNS issue. VPN may help.
-- **No captcha solving** — Anna's Archive "slow download" links require captcha and cannot be automated. The tool uses external LibGen mirror links instead.
-- **Metadata accuracy** — Scanned PDF detection is heuristic-based and may occasionally misclassify.
 
 ## Disclaimer
 
@@ -153,15 +141,15 @@ MIT
 
 # gethatbook (gtb) 中文文档
 
-一个命令行电子书聚合搜索下载工具。跨多个数据源（Anna's Archive、Library Genesis）并行搜索，按格式质量和标题相关性自动选择最佳结果并下载 —— 一条命令搞定。
+一个命令行电子书聚合搜索下载工具。跨多个开放数据源并行搜索，按格式质量和标题相关性自动选择最佳结果并下载 —— 一条命令搞定。
 
 ## 功能特性
 
-- **多源并行搜索** — 同时搜索 Anna's Archive 和 LibGen，合并结果，按 MD5 去重
+- **多源并行搜索** — 同时搜索多个电子书数据源，合并结果，按 MD5 去重
 - **智能自动选择** — 按标题相关性 → 格式优先级（`文本PDF > md > epub > mobi > 扫描PDF`）→ 文件大小排序
 - **扫描版 PDF 检测** — 基于每页字节数启发式检测扫描/OCR版PDF，自动降低优先级
 - **自动降级** — 下载失败自动尝试下一个最优结果，直到成功
-- **速率限制和重试** — 请求间隔 0.5s，失败自动重试（线性退避）
+- **速率限制和重试** — 请求间隔限速，失败自动重试（线性退避）
 - **浏览模式** — `--list` 参数预览所有结果，不下载
 - **格式过滤** — `--format pdf` 限制返回特定格式
 - **下载进度条** — 实时显示下载进度
@@ -177,9 +165,9 @@ pip install -e .
 ### 依赖
 
 - Python 3.10+
-- [httpx](https://www.python-httpx.org/) — HTTP 客户端
-- [beautifulsoup4](https://www.crummy.com/software/BeautifulSoup/) + [lxml](https://lxml.de/) — HTML 解析
-- [click](https://click.palletsprojects.com/) — CLI 框架
+- httpx — HTTP 客户端
+- beautifulsoup4 + lxml — HTML 解析
+- click — CLI 框架
 
 所有依赖通过 `pip install` 自动安装。
 
@@ -208,13 +196,11 @@ gtb "Design Patterns" --list
 输出示例：
 ```
 Searching for: Design Patterns
-  [annas] found 50 results
-  [libgen] found 25 results
 
 62 results:
-  1. [pdf] Design Patterns: Elements of Reusable Object-Oriented Software (5.2 MB, libgen)
-  2. [epub] Design Patterns: Elements of Reusable Object-Oriented Software (1.8 MB, annas)
-  3. [pdf] Head First Design Patterns (12.3 MB, annas)
+  1. [pdf] Design Patterns: Elements of Reusable Object-Oriented Software (5.2 MB, source-a)
+  2. [epub] Design Patterns: Elements of Reusable Object-Oriented Software (1.8 MB, source-b)
+  3. [pdf] Head First Design Patterns (12.3 MB, source-b)
   ...
 ```
 
@@ -235,8 +221,7 @@ gtb --version
 ```
 gtb "书名"
        │
-       ├── 1. 并行搜索 ──┬── Anna's Archive (annas-archive.gl)
-       │                  └── Library Genesis (libgen.is)
+       ├── 1. 并行搜索多个数据源
        │
        ├── 2. 按 MD5 哈希去重
        │
@@ -245,9 +230,7 @@ gtb "书名"
        │      ② 格式优先级（文本PDF > md > epub > 扫描PDF）
        │      ③ 文件大小（同级别优先选小的）
        │
-       ├── 4. 解析下载链接：
-       │      Anna's Archive → 详情页 → libgen 镜像 → GET 链接
-       │      LibGen → 镜像页（library.lol）→ GET 链接
+       ├── 4. 通过镜像页解析下载链接
        │
        └── 5. 下载（失败自动降级 → 尝试下一个结果）
 ```
@@ -267,15 +250,15 @@ gtb "书名"
 
 ```
 src/gtb/
-├── cli.py              # Click 命令行入口
+├── cli.py              # 命令行入口
 ├── models.py           # BookResult 数据类、FormatType 枚举
 ├── ranking.py          # 标题相关性 + 格式评分
-├── search.py           # 并行搜索调度器（ThreadPoolExecutor）
+├── search.py           # 并行搜索调度器
 ├── download.py         # 流式下载 + 进度显示
 └── sources/
     ├── base.py         # Source 抽象基类、共享 HTTP 客户端（含重试/限速）
-    ├── libgen.py       # LibGen 搜索 + 镜像页解析
-    └── annas.py        # Anna's Archive 搜索 + 两跳下载解析
+    ├── libgen.py       # 数据源 A：搜索 + 镜像页解析
+    └── annas.py        # 数据源 B：搜索 + 两跳下载解析
 ```
 
 ## 测试
@@ -286,13 +269,6 @@ pytest tests/ -v
 ```
 
 48 个测试覆盖模型、排序、搜索调度、下载管理、CLI 及两个数据源后端（全部使用 mock HTTP，无需网络）。
-
-## 已知限制
-
-- **Anna's Archive 反爬保护** — Cloudflare/DDoS-Guard 可能在某些网络环境下拦截请求。工具已使用真实 User-Agent 和速率限制来缓解。
-- **LibGen 镜像可用性** — 镜像域名经常变更。如果下载失败，通常是网络/DNS 问题，使用 VPN 可能有帮助。
-- **无验证码破解** — Anna's Archive "慢速下载" 需要验证码，无法自动化。工具改用外部 LibGen 镜像链接。
-- **元数据准确性** — 扫描版 PDF 检测基于启发式算法，偶尔可能误判。
 
 ## 免责声明
 

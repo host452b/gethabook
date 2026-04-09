@@ -13,21 +13,37 @@ MIRRORS = ["annas-archive.gl", "annas-archive.pk", "annas-archive.gd"]
 
 
 def _parse_meta_line(text: str) -> dict:
-    """Parse a line like 'English, 2008, pdf, 5.0MB, 464 pages' into fields."""
+    """Parse metadata like 'English [en] · PDF · 23.2MB · 2023 · ...'"""
     info: dict = {"language": "", "year": "", "extension": "", "size_bytes": 0, "pages": ""}
-    parts = [p.strip() for p in text.split(",")]
+
+    # Split on middle dot separator
+    parts = [p.strip() for p in re.split(r"\s*·\s*", text)]
     for part in parts:
-        part_lower = part.lower()
-        if re.match(r"^\d{4}$", part):
-            info["year"] = part
+        part_stripped = part.strip()
+        part_lower = part_stripped.lower()
+
+        # Year: 4 digits
+        if re.match(r"^\d{4}$", part_stripped):
+            info["year"] = part_stripped
+        # Size: e.g. "23.2MB"
         elif re.match(r"^[\d.]+\s*(kb|mb|gb|b)$", part_lower):
-            info["size_bytes"] = parse_size(part)
+            info["size_bytes"] = parse_size(part_stripped)
+        # Pages: e.g. "464 pages"
         elif re.match(r"^\d+\s*pages?$", part_lower):
-            info["pages"] = re.search(r"\d+", part).group()
-        elif part_lower in ("pdf", "epub", "mobi", "azw3", "djvu", "md", "txt", "fb2", "cbr", "cbz", "doc", "docx", "rtf"):
+            m = re.search(r"\d+", part_stripped)
+            info["pages"] = m.group() if m else ""
+        # Extension: pdf, epub, etc (case insensitive, may be uppercase like "PDF")
+        elif part_lower in ("pdf", "epub", "mobi", "azw3", "djvu", "md", "txt",
+                            "fb2", "cbr", "cbz", "doc", "docx", "rtf"):
             info["extension"] = part_lower
-        elif len(part) > 1 and not part[0].isdigit():
-            info["language"] = part
+        # Language: e.g. "English [en]" — take first part if has brackets
+        elif re.match(r"^[A-Z]", part_stripped) and "[" in part_stripped:
+            info["language"] = re.sub(r"\s*\[.*\]", "", part_stripped)
+        # Language without brackets
+        elif re.match(r"^[A-Za-z]+$", part_stripped) and len(part_stripped) > 1 and not part_stripped[0].isdigit():
+            if not info["language"]:
+                info["language"] = part_stripped
+
     return info
 
 
@@ -65,33 +81,47 @@ class AnnasArchiveSource(Source):
     def _parse_results(self, html: str) -> list[BookResult]:
         soup = BeautifulSoup(html, "lxml")
         results: list[BookResult] = []
+        seen_md5: set[str] = set()
 
-        md5_links = soup.find_all("a", href=re.compile(r"/md5/[a-fA-F0-9]{32}$"))
-        for link in md5_links:
-            href = link.get("href", "")
-            md5_match = re.search(r"/md5/([a-fA-F0-9]{32})$", href)
-            if not md5_match:
+        # Real AA structure: each result row is a div with border-b and pt-3
+        rows = soup.find_all(
+            "div",
+            class_=lambda c: c and "border-b" in c and "pt-3" in c,
+        )
+
+        for row in rows:
+            # Find title link: <a> with /md5/ href that has visible text
+            title = ""
+            md5 = ""
+            for a in row.find_all("a", href=re.compile(r"/md5/[a-fA-F0-9]{32}")):
+                text = a.get_text(strip=True)
+                if text and len(text) > 3:
+                    href = a.get("href", "")
+                    m = re.search(r"/md5/([a-fA-F0-9]{32})", href)
+                    if m:
+                        title = text
+                        md5 = m.group(1).upper()
+                        break
+
+            if not md5 or md5 in seen_md5:
                 continue
-            md5 = md5_match.group(1).upper()
+            seen_md5.add(md5)
 
-            title = link.get_text(strip=True)
-            if not title:
-                continue
-
-            container = link.find_parent("div", class_="mb-4") or link.parent
-            author = ""
+            # Find metadata line: div containing middle dot separator
             meta: dict = {}
+            author = ""
+            for div in row.find_all("div"):
+                text = div.get_text(strip=True)
+                if "·" in text and len(text) < 300:
+                    meta = _parse_meta_line(text)
+                    break
 
-            if container:
-                divs = container.find_all("div")
-                for div in divs:
-                    text = div.get_text(strip=True)
-                    if div == link.parent:
-                        continue
-                    if not author and not re.search(r"\d{4}", text) and not re.search(r"(pdf|epub|mobi|md|djvu)", text, re.I):
-                        author = text
-                    if re.search(r"\d{4}", text) and re.search(r"(pdf|epub|mobi|md|djvu)", text, re.I):
-                        meta = _parse_meta_line(text)
+            # Author: look for a line-clamped div that isn't the title
+            for div in row.find_all("div", class_=lambda c: c and "line-clamp" in " ".join(c) if c else False):
+                text = div.get_text(strip=True)
+                if text and text != title and not re.search(r"·", text):
+                    author = text
+                    break
 
             results.append(BookResult(
                 title=title,
@@ -105,10 +135,29 @@ class AnnasArchiveSource(Source):
                 source="annas",
             ))
 
+        # Fallback: if row-based parsing found nothing, try the old link-based approach
+        if not results:
+            for link in soup.find_all("a", href=re.compile(r"/md5/[a-fA-F0-9]{32}$")):
+                text = link.get_text(strip=True)
+                if not text or len(text) < 3:
+                    continue
+                m = re.search(r"/md5/([a-fA-F0-9]{32})$", link.get("href", ""))
+                if not m:
+                    continue
+                md5 = m.group(1).upper()
+                if md5 in seen_md5:
+                    continue
+                seen_md5.add(md5)
+                results.append(BookResult(
+                    title=text, author="", md5=md5,
+                    extension="", size_bytes=0, language="",
+                    year="", pages="", source="annas",
+                ))
+
         return results
 
     def resolve_download_url(self, book: BookResult) -> str | None:
-        """Two-hop: detail page -> external link (library.lol) -> GET link."""
+        """Resolve via detail page → find libgen mirror link → scrape GET link."""
         if not self.base_url:
             if not self._find_mirror():
                 return None
@@ -120,30 +169,43 @@ class AnnasArchiveSource(Source):
             return None
 
         soup = BeautifulSoup(resp.text, "lxml")
-        panel = soup.find("div", id="md5-panel-downloads")
-        if not panel:
-            panel = soup
 
-        external_links = panel.find_all("a", class_="js-download-link")
-        if not external_links:
-            external_links = panel.find_all("a", href=re.compile(r"library\.lol"))
+        # Strategy 1: Find direct libgen.is/book/index.php?md5= link
+        libgen_link = soup.find("a", href=re.compile(
+            r"https?://libgen\.(is|rs|st)/book/index\.php\?md5=", re.I
+        ))
+        if libgen_link:
+            mirror_url = libgen_link["href"]
+            return self._resolve_mirror_page(mirror_url)
 
-        for ext_link in external_links:
-            mirror_url = ext_link.get("href", "")
-            if not mirror_url:
-                continue
-            try:
-                resp2 = self._get(mirror_url)
-            except (httpx.RequestError, httpx.HTTPStatusError):
-                continue
+        # Strategy 2: Find libgen.li/file.php link (direct download)
+        libgen_li = soup.find("a", href=re.compile(r"https?://libgen\.li/file\.php"))
+        if libgen_li:
+            return libgen_li["href"]
 
-            mirror_soup = BeautifulSoup(resp2.text, "lxml")
-            for a in mirror_soup.find_all("a"):
-                if a.get_text(strip=True) == "GET":
-                    href = a.get("href", "")
-                    if href.startswith("http"):
-                        return href
-                    parsed = urlparse(mirror_url)
-                    return f"{parsed.scheme}://{parsed.netloc}{href}"
+        # Strategy 3: Find any library.lol link
+        lol_link = soup.find("a", href=re.compile(r"https?://library\.lol/"))
+        if lol_link:
+            return self._resolve_mirror_page(lol_link["href"])
 
+        # Strategy 4: Construct libgen mirror URL from MD5 directly
+        return self._resolve_mirror_page(
+            f"https://libgen.is/book/index.php?md5={book.md5}"
+        )
+
+    def _resolve_mirror_page(self, mirror_url: str) -> str | None:
+        """Fetch a mirror page and extract the GET download link."""
+        try:
+            resp = self._get(mirror_url)
+        except (httpx.RequestError, httpx.HTTPStatusError):
+            return None
+
+        soup = BeautifulSoup(resp.text, "lxml")
+        for a in soup.find_all("a"):
+            if a.get_text(strip=True) == "GET":
+                href = a.get("href", "")
+                if href.startswith("http"):
+                    return href
+                parsed = urlparse(mirror_url)
+                return f"{parsed.scheme}://{parsed.netloc}{href}"
         return None

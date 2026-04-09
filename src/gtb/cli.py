@@ -6,7 +6,7 @@ import click
 
 from .download import download_file
 from .models import BookResult
-from .ranking import select_best
+from .ranking import select_best, set_query
 from .search import parallel_search
 from .sources import ALL_SOURCES
 
@@ -52,6 +52,7 @@ def main(query: tuple[str, ...], fmt: str | None, dest_dir: str, list_mode: bool
     query_str = " ".join(query)
     click.echo(f"Searching for: {query_str}", err=True)
 
+    set_query(query_str)
     sources = [cls() for cls in ALL_SOURCES]
     try:
         results = parallel_search(query_str, sources)

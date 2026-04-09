@@ -55,41 +55,42 @@ LIBGEN_SEARCH_NO_RESULTS_HTML = """
 </body></html>
 """
 
+# Realistic Anna's Archive search HTML (matches 2026 site structure)
 ANNAS_SEARCH_HTML = """
 <html><body>
-<div class="mb-4">
-  <div class="h-[125] flex">
-    <div class="flex-col">
-      <a href="/md5/D41D8CD98F00B204E9800998ECF8427E" class="text-lg font-bold">
+<div class="js-aarecord-list-outer">
+  <div class="flex pt-3 pb-3 border-b border-gray-100">
+    <div>
+      <a href="/md5/D41D8CD98F00B204E9800998ECF8427E" class="js-vim-focus font-semibold text-lg">
         Clean Code: A Handbook of Agile Software Craftsmanship
       </a>
-      <div class="text-sm text-gray-500">Robert C. Martin</div>
-      <div class="text-xs">English, 2008, pdf, 5.0MB, 464 pages</div>
     </div>
+    <div class="text-gray-800 font-semibold">English [en] · PDF · 5.0MB · 2008 · 📘 Book (non-fiction)</div>
   </div>
-</div>
-<div class="mb-4">
-  <div class="h-[125] flex">
-    <div class="flex-col">
-      <a href="/md5/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" class="text-lg font-bold">
+  <div class="flex pt-3 pb-3 border-b border-gray-100">
+    <div>
+      <a href="/md5/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" class="js-vim-focus font-semibold text-lg">
         The Pragmatic Programmer
       </a>
-      <div class="text-sm text-gray-500">David Thomas, Andrew Hunt</div>
-      <div class="text-xs">English, 2019, epub, 3.2MB, 352 pages</div>
     </div>
+    <div class="text-gray-800 font-semibold">English [en] · EPUB · 3.2MB · 2019 · 📘 Book (non-fiction)</div>
   </div>
 </div>
 </body></html>
 """
 
+# Realistic Anna's Archive detail page with libgen links (2026 structure)
 ANNAS_DETAIL_HTML = """
 <html><body>
 <div class="text-3xl font-bold">Clean Code</div>
 <div id="md5-panel-downloads">
-  <ul class="list-inside">
-    <li><a class="js-download-link" href="http://library.lol/main/D41D8CD98F00B204E9800998ECF8427E">Libgen.li</a></li>
-    <li><a class="js-download-link" href="http://library.lol/fiction/D41D8CD98F00B204E9800998ECF8427E">Libgen.rs Fiction</a></li>
-  </ul>
+  <a class="js-download-link" href="/fast_download/d41d8cd98f00b204e9800998ecf8427e/0/0">Fast Partner Server #1</a>
+  <a class="js-download-link" href="/fast_download/d41d8cd98f00b204e9800998ecf8427e/0/1">Fast Partner Server #2</a>
+  <a href="/slow_download/d41d8cd98f00b204e9800998ecf8427e/0/0">Slow Partner Server #1</a>
+</div>
+<div>
+  <a href="https://libgen.is/book/index.php?md5=D41D8CD98F00B204E9800998ECF8427E">libgen.is</a>
+  <a href="https://libgen.li/file.php?id=12345">libgen.li</a>
 </div>
 </body></html>
 """

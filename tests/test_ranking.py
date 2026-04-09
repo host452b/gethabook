@@ -1,10 +1,10 @@
 from gtb.models import BookResult, FormatType
-from gtb.ranking import score_book, select_best
+from gtb.ranking import score_book, select_best, set_query
 
 
-def _book(ext: str, size_mb: float, pages: str = "") -> BookResult:
+def _book(ext: str, size_mb: float, pages: str = "", title: str = "Test") -> BookResult:
     return BookResult(
-        title="Test", author="A", md5="X", extension=ext,
+        title=title, author="A", md5="X", extension=ext,
         size_bytes=int(size_mb * 1024 * 1024),
         language="en", year="2020", source="libgen", pages=pages,
     )
@@ -51,3 +51,29 @@ def test_select_best_prefers_smaller_within_same_format():
     best = select_best([large, small])
     assert best is not None
     assert best.md5 == "SMALL"
+
+
+def test_title_relevance_prefers_matching_title():
+    set_query("Godot Multiplayer Games")
+    relevant = _book("pdf", 10, title="The Essential Guide to Creating Multiplayer Games with Godot 4.0")
+    irrelevant = _book("pdf", 1, title="Passive Income Secrets")
+    relevant.md5 = "RELEVANT"
+    irrelevant.md5 = "IRRELEVANT"
+
+    assert score_book(relevant) < score_book(irrelevant)
+
+    best = select_best([irrelevant, relevant])
+    assert best.md5 == "RELEVANT"
+    set_query("")  # cleanup
+
+
+def test_relevance_beats_smaller_size():
+    set_query("Clean Code")
+    match = _book("pdf", 20, title="Clean Code: A Handbook of Agile Software")
+    tiny = _book("pdf", 0.3, title="Random Unrelated Book")
+    match.md5 = "MATCH"
+    tiny.md5 = "TINY"
+
+    best = select_best([tiny, match])
+    assert best.md5 == "MATCH"
+    set_query("")

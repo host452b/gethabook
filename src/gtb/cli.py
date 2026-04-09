@@ -6,7 +6,7 @@ import click
 
 from .download import download_file
 from .models import BookResult
-from .ranking import select_best, set_query
+from .ranking import score_book, set_query
 from .search import parallel_search
 from .sources import ALL_SOURCES
 
@@ -70,7 +70,7 @@ def main(query: tuple[str, ...], fmt: str | None, dest_dir: str, list_mode: bool
                 sys.exit(1)
 
         # Sort by ranking
-        ranked = sorted(results, key=lambda b: (b.format_type.value, b.size_bytes))
+        ranked = sorted(results, key=score_book)
 
         # List mode: show all results and exit
         if list_mode:

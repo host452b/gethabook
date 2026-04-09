@@ -38,7 +38,7 @@ def download_file(
         print("", file=sys.stderr)
         return dest
 
-    except (httpx.RequestError, httpx.HTTPStatusError) as e:
+    except (httpx.RequestError, httpx.HTTPStatusError, OSError) as e:
         print(f"\nDownload failed: {e}", file=sys.stderr)
         if os.path.exists(dest):
             os.remove(dest)
@@ -48,7 +48,11 @@ def download_file(
 def _sanitize_filename(name: str) -> str:
     """Remove or replace characters unsafe for filenames."""
     keep = " .-_()"
-    return "".join(c if c.isalnum() or c in keep else "_" for c in name).strip()
+    result = "".join(c if c.isalnum() or c in keep else "_" for c in name).strip()
+    # Guard against empty, dot-only, or whitespace-only results
+    if not result or result.replace(".", "") == "":
+        return "download"
+    return result
 
 
 def _print_progress(downloaded: int, total: int) -> None:

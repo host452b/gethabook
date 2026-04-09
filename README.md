@@ -49,19 +49,19 @@ gtb "Clean Code" --format epub
 ### Browse results without downloading
 
 ```bash
-gtb "Godot 4 Game Development Cookbook" --list
+gtb "Design Patterns" --list
 ```
 
 Output:
 ```
-Searching for: Godot 4 Game Development Cookbook
-  [annas] found 46 results
-  [libgen] found 0 results
+Searching for: Design Patterns
+  [annas] found 50 results
+  [libgen] found 25 results
 
-46 results:
-  1. [pdf] Godot 4 Game Development Cookbook: Over 50 solid recipes... (9.0 MB, annas)
-  2. [pdf] Godot 4 Game Development Cookbook: Over 50 solid recipes... (25.1 MB, annas)
-  3. [epub] Godot 4 Game Development Cookbook: Over 50 solid recipes... (20.1 MB, annas)
+62 results:
+  1. [pdf] Design Patterns: Elements of Reusable Object-Oriented Software (5.2 MB, libgen)
+  2. [epub] Design Patterns: Elements of Reusable Object-Oriented Software (1.8 MB, annas)
+  3. [pdf] Head First Design Patterns (12.3 MB, annas)
   ...
 ```
 
@@ -198,19 +198,19 @@ gtb "Clean Code" --format epub
 ### 浏览搜索结果（不下载）
 
 ```bash
-gtb "Godot 4 Game Development Cookbook" --list
+gtb "Design Patterns" --list
 ```
 
 输出示例：
 ```
-Searching for: Godot 4 Game Development Cookbook
-  [annas] found 46 results
-  [libgen] found 0 results
+Searching for: Design Patterns
+  [annas] found 50 results
+  [libgen] found 25 results
 
-46 results:
-  1. [pdf] Godot 4 Game Development Cookbook: Over 50 solid recipes... (9.0 MB, annas)
-  2. [pdf] Godot 4 Game Development Cookbook: Over 50 solid recipes... (25.1 MB, annas)
-  3. [epub] Godot 4 Game Development Cookbook: Over 50 solid recipes... (20.1 MB, annas)
+62 results:
+  1. [pdf] Design Patterns: Elements of Reusable Object-Oriented Software (5.2 MB, libgen)
+  2. [epub] Design Patterns: Elements of Reusable Object-Oriented Software (1.8 MB, annas)
+  3. [pdf] Head First Design Patterns (12.3 MB, annas)
   ...
 ```
 

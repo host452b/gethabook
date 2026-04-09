@@ -103,7 +103,7 @@ class AnnasArchiveSource(Source):
                     text = div.get_text(strip=True)
                     if div == link.parent:
                         continue
-                    if not author and "," not in text and not re.search(r"\d{4}", text):
+                    if not author and not re.search(r"\d{4}", text) and not re.search(r"(pdf|epub|mobi|md|djvu)", text, re.I):
                         author = text
                     if re.search(r"\d{4}", text) and re.search(r"(pdf|epub|mobi|md|djvu)", text, re.I):
                         meta = _parse_meta_line(text)

@@ -79,23 +79,23 @@ class LibGenSource(Source):
             if len(cols) < 10:
                 continue
 
-            # MD5 from mirror link
+            # MD5 from mirror links (search cols 9+ for mirror columns)
             mirror_url, md5 = "", ""
-            for a in cols[9].find_all("a"):
-                href = a.get("href", "")
-                md5_match = re.search(r"/([a-fA-F0-9]{32})", href)
-                if md5_match:
-                    mirror_url = href
-                    md5 = md5_match.group(1).upper()
-                    break
-            if not md5:
-                for a in cols[9].find_all("a"):
+            for col in cols[9:]:
+                for a in col.find_all("a"):
                     href = a.get("href", "")
+                    md5_match = re.search(r"/([a-fA-F0-9]{32})", href)
+                    if md5_match:
+                        mirror_url = href
+                        md5 = md5_match.group(1).upper()
+                        break
                     m = re.search(r"md5=([a-fA-F0-9]{32})", href, re.IGNORECASE)
                     if m:
                         mirror_url = href
                         md5 = m.group(1).upper()
                         break
+                if md5:
+                    break
             if not md5:
                 continue
 

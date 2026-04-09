@@ -13,18 +13,24 @@ def parallel_search(
     timeout: float = 60,
 ) -> list[BookResult]:
     """Search all sources in parallel, deduplicate by MD5."""
+    if not sources:
+        return []
+
     all_results: list[BookResult] = []
 
     with ThreadPoolExecutor(max_workers=len(sources)) as pool:
         futures = {pool.submit(_safe_search, src, query): src for src in sources}
-        for future in as_completed(futures, timeout=timeout):
-            src = futures[future]
-            try:
-                results = future.result()
-                print(f"  [{src.name}] found {len(results)} results", file=sys.stderr)
-                all_results.extend(results)
-            except Exception as e:
-                print(f"  [{src.name}] failed: {e}", file=sys.stderr)
+        try:
+            for future in as_completed(futures, timeout=timeout):
+                src = futures[future]
+                try:
+                    results = future.result()
+                    print(f"  [{src.name}] found {len(results)} results", file=sys.stderr)
+                    all_results.extend(results)
+                except Exception as e:
+                    print(f"  [{src.name}] failed: {e}", file=sys.stderr)
+        except TimeoutError:
+            print("  Search timed out, returning partial results", file=sys.stderr)
 
     return _dedupe(all_results)
 

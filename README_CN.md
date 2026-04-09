@@ -17,10 +17,18 @@
 
 ## 安装
 
+### 快速安装（一条命令）
+
+```bash
+pip install git+https://github.com/host452b/gethabook.git
+```
+
+### 开发安装
+
 ```bash
 git clone https://github.com/host452b/gethabook.git
 cd gethabook
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ### 依赖

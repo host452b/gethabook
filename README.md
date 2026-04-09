@@ -17,10 +17,18 @@ A command-line tool that aggregates ebook search across multiple open sources, a
 
 ## Installation
 
+### Quick install (one command)
+
+```bash
+pip install git+https://github.com/host452b/gethabook.git
+```
+
+### Development install
+
 ```bash
 git clone https://github.com/host452b/gethabook.git
 cd gethabook
-pip install -e .
+pip install -e ".[dev]"
 ```
 
 ### Dependencies

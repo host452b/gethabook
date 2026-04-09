@@ -141,6 +141,10 @@ pytest tests/ -v
 - **No captcha solving** — Anna's Archive "slow download" links require captcha and cannot be automated. The tool uses external LibGen mirror links instead.
 - **Metadata accuracy** — Scanned PDF detection is heuristic-based and may occasionally misclassify.
 
+## Disclaimer
+
+This project is provided **for educational and testing purposes only**. Users are solely responsible for complying with all applicable laws and regulations in their jurisdiction. **Any use of this tool for copyright infringement, piracy, or other illegal activities is strictly prohibited.** The authors assume no liability for misuse of this software. If you find a book useful, please support the authors by purchasing a legitimate copy.
+
 ## License
 
 MIT
@@ -289,6 +293,10 @@ pytest tests/ -v
 - **LibGen 镜像可用性** — 镜像域名经常变更。如果下载失败，通常是网络/DNS 问题，使用 VPN 可能有帮助。
 - **无验证码破解** — Anna's Archive "慢速下载" 需要验证码，无法自动化。工具改用外部 LibGen 镜像链接。
 - **元数据准确性** — 扫描版 PDF 检测基于启发式算法，偶尔可能误判。
+
+## 免责声明
+
+本项目**仅供学习和测试使用**。用户应自行遵守所在地区的法律法规。**严禁将本工具用于侵犯版权、盗版或其他任何违法行为。** 作者不对因滥用本软件而产生的任何后果承担责任。如果您觉得某本书有价值，请购买正版以支持作者。
 
 ## 许可证
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import click
 
 from .download import download_file
@@ -28,53 +30,81 @@ def _resolve_and_download(book: BookResult, sources: list, dest_dir: str) -> str
     return None
 
 
+def _print_book(book: BookResult, prefix: str = "") -> None:
+    """Print book info to stderr consistently."""
+    click.echo(f"{prefix}Title:  {book.title}", err=True)
+    click.echo(f"{prefix}Author: {book.author}", err=True)
+    click.echo(f"{prefix}Format: {book.extension} ({book.format_type.name})", err=True)
+    click.echo(f"{prefix}Size:   {book.size_display}", err=True)
+    click.echo(f"{prefix}Year:   {book.year}", err=True)
+    click.echo(f"{prefix}Source: {book.source}", err=True)
+    click.echo(f"{prefix}MD5:    {book.md5}", err=True)
+
+
 @click.command()
 @click.argument("query", nargs=-1, required=True)
 @click.option("--format", "-f", "fmt", default=None, help="Force format: pdf, epub, md, mobi")
 @click.option("--output", "-o", "dest_dir", default=".", help="Download directory (default: current)")
-def main(query: tuple[str, ...], fmt: str | None, dest_dir: str) -> None:
+@click.option("--list", "-l", "list_mode", is_flag=True, help="List results without downloading")
+@click.version_option(package_name="gethatbook")
+def main(query: tuple[str, ...], fmt: str | None, dest_dir: str, list_mode: bool) -> None:
     """Search and download ebooks. Usage: gtb 'book title'"""
     query_str = " ".join(query)
     click.echo(f"Searching for: {query_str}", err=True)
 
     sources = [cls() for cls in ALL_SOURCES]
-    results = parallel_search(query_str, sources)
+    try:
+        results = parallel_search(query_str, sources)
 
-    if not results:
-        click.echo("No results found across any source.")
-        return
-
-    # Filter by format if specified
-    if fmt:
-        fmt_lower = fmt.lower().strip(".")
-        results = [r for r in results if r.extension.lower() == fmt_lower]
         if not results:
-            click.echo(f"No results found with format '{fmt}'.")
+            click.echo("No results found across any source.", err=True)
+            sys.exit(1)
+
+        # Filter by format if specified
+        if fmt:
+            fmt_lower = fmt.lower().strip(".")
+            results = [r for r in results if r.extension.lower() == fmt_lower]
+            if not results:
+                click.echo(f"No results found with format '{fmt}'.", err=True)
+                sys.exit(1)
+
+        # Sort by ranking
+        ranked = sorted(results, key=lambda b: (b.format_type.value, b.size_bytes))
+
+        # List mode: show all results and exit
+        if list_mode:
+            click.echo(f"\n{len(ranked)} results:", err=True)
+            for i, r in enumerate(ranked):
+                click.echo(
+                    f"  {i+1}. [{r.extension}] {r.title} - {r.author} "
+                    f"({r.size_display}, {r.source})",
+                    err=True,
+                )
             return
 
-    best = select_best(results)
-    if not best:
-        click.echo("No suitable results found.")
-        return
+        # Auto mode: try downloading from best to worst
+        for attempt, book in enumerate(ranked):
+            if attempt == 0:
+                click.echo(f"\nBest match:", err=True)
+            else:
+                click.echo(f"\nTrying next result ({attempt + 1}/{len(ranked)}):", err=True)
+            _print_book(book, prefix="  ")
+            click.echo("", err=True)
 
-    click.echo(f"\nBest match:", err=True)
-    click.echo(f"  Title:  {best.title}")
-    click.echo(f"  Author: {best.author}")
-    click.echo(f"  Format: {best.extension} ({best.format_type.name})")
-    click.echo(f"  Size:   {best.size_display}")
-    click.echo(f"  Year:   {best.year}")
-    click.echo(f"  Source: {best.source}")
-    click.echo(f"  MD5:    {best.md5}")
-    click.echo()
+            path = _resolve_and_download(book, sources, dest_dir)
+            if path:
+                click.echo(f"Saved to: {path}", err=True)
+                return
 
-    path = _resolve_and_download(best, sources, dest_dir)
-    if path:
-        click.echo(f"Saved to: {path}")
-    else:
-        click.echo("Failed to download. Try a different result or source.", err=True)
-        click.echo("\nOther results:", err=True)
-        for i, r in enumerate(sorted(results, key=lambda b: (b.format_type.value, b.size_bytes))[:5]):
-            click.echo(f"  {i+1}. [{r.extension}] {r.title} - {r.author} ({r.size_display}, {r.source})", err=True)
+            if attempt < len(ranked) - 1:
+                click.echo("  Download failed, trying next...", err=True)
+
+        click.echo("All download attempts failed.", err=True)
+        sys.exit(1)
+
+    finally:
+        for src in sources:
+            src.close()
 
 
 if __name__ == "__main__":

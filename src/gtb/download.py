@@ -49,9 +49,18 @@ def _sanitize_filename(name: str) -> str:
     """Remove or replace characters unsafe for filenames."""
     keep = " .-_()"
     result = "".join(c if c.isalnum() or c in keep else "_" for c in name).strip()
-    # Guard against empty, dot-only, or whitespace-only results
     if not result or result.replace(".", "") == "":
         return "download"
+    # Filesystem limit: 255 bytes max for filename
+    if len(result.encode("utf-8")) > 250:
+        # Truncate while keeping the extension
+        base, _, ext = result.rpartition(".")
+        if ext and len(ext) < 10:
+            max_base = 250 - len(ext.encode("utf-8")) - 1
+            base_bytes = base.encode("utf-8")[:max_base]
+            result = base_bytes.decode("utf-8", errors="ignore") + "." + ext
+        else:
+            result = result.encode("utf-8")[:250].decode("utf-8", errors="ignore")
     return result
 
 

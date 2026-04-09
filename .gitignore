@@ -1,14 +1,54 @@
+# Python
 __pycache__/
 *.py[cod]
-*.egg-info/
+*$py.class
+*.so
+
+# Distribution / packaging
 dist/
 build/
-.eggs/
+*.egg-info/
 *.egg
+.eggs/
+sdist/
+wheels/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Testing
 .pytest_cache/
 .hypothesis/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Downloaded ebooks (gtb output)
 *.pdf
 *.epub
 *.mobi
 *.azw3
 *.djvu
+*.cbr
+*.cbz
+*.fb2
+
+# Config (may contain API keys in future)
+.gtb/
